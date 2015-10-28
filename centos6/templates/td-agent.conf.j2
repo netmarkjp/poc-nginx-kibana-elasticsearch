@@ -1,0 +1,37 @@
+<source>
+  type tail
+  path /var/log/nginx/access.log
+  pos_file /tmp/td-agent/nginx.access.log.pos
+  tag nginx.access
+  format /^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^ ]*) +\S*)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)" "(?<forwarder>[^\"]*)")?/
+  time_format %d/%b/%Y:%H:%M:%S %z
+</source>
+
+<filter nginx.access>
+  type record_transformer
+  <record>
+    host ${hostname}
+#    time ${time}
+  </record>
+</filter>
+
+<match nginx.access>
+  type copy
+#  <store>
+#    type file
+#    path /tmp/td.out
+#  </store>
+  <store>
+    type elasticsearch
+    logstash_format true
+    logstash_prefix nginx.access
+    hosts mon01:9200
+    reload_on_failure true
+    buffer_type memory
+    retry_limit 17
+    retry_wait 1.0
+    num_threads 1
+    flush_interval 5
+    retry_limit 17
+  </store>
+</match>

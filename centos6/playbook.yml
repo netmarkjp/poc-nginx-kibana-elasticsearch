@@ -1,0 +1,81 @@
+- hosts: all
+  sudo: yes
+  tasks:
+#    - yum: name=* state=latest
+    - yum: name=libselinux-python
+    - selinux: state=disabled
+    - yum: name=ntp
+    - service: name=ntpd state=started enabled=yes
+    - yum: name=epel-release
+
+- hosts: web01
+  sudo: yes
+  tasks:
+    - yum: name="{{item}}" state=installed
+      with_items:
+        - nginx
+    - shell: curl -L https://td-toolbelt.herokuapp.com/sh/install-redhat-td-agent2.sh | sh
+      args:
+        creates: /etc/td-agent/td-agent.conf
+    - shell: /usr/sbin/td-agent-gem install fluent-plugin-elasticsearch ; /usr/sbin/td-agent-gem list 2>&1 | grep fluent-plugin | while read line; do touch /opt/td-agent/installed-$line ; done
+      args:
+        creates: /opt/td-agent/installed-fluent-plugin-elasticsearch
+    - template: src=templates/td-agent.conf.j2 dest=/etc/td-agent/td-agent.conf owner=root group=root mode=644
+      notify: reload_td-agent
+    - service: name=td-agent state=started enabled=yes
+    - template: src=templates/iptables.j2 dest=/etc/sysconfig/iptables owner=root group=root mode=600
+      notify: reload_iptables
+    - template: src=templates/nginx.conf.j2 dest=/etc/nginx/nginx.conf owner=root group=root mode=600
+      notify: reload_nginx
+    - service: name=nginx state=started enabled=yes
+    - file: path=/var/log/nginx state=directory mode=0755
+  handlers:
+    - name: reload_td-agent
+      service: name=td-agent state=reloaded
+    - name: reload_iptables
+      service: name=iptables state=reloaded
+    - name: reload_nginx
+      service: name=nginx state=reloaded
+
+- name: hosts
+  hosts: all
+  sudo: yes
+  tasks:
+    - lineinfile: dest=/etc/hosts regexp="^{{item.ip}} .*" line="{{item.ip}} {{item.hostname}}"
+      with_items:
+        - hostname: "mon01"
+          ip: "192.168.33.20"
+        - hostname: "web01"
+          ip: "192.168.33.21"
+
+- name: elasticsearch
+  hosts: mon01
+  sudo: yes
+  tasks:
+    - yum: name=https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.1.noarch.rpm
+    - yum: name={{item}}
+      with_items:
+          - elasticsearch
+          - java-1.8.0-openjdk
+    - service: name=elasticsearch state=started enabled=yes
+    - get_url: url=https://download.elastic.co/kibana/kibana/kibana-4.1.2-linux-x64.tar.gz dest=/tmp/kibana.tar.gz
+    - shell: |-
+        tar zxf /tmp/kibana.tar.gz -C /opt
+        mv `ls -trd /opt/kibana-* | tail -1` /opt/kibana
+      args:
+        creates: /opt/kibana
+    - template: src=templates/kibana.yml.j2 dest=/opt/kibana/config/kibana.yml owner=root group=root mode=600
+      notify: reload_kibana
+    - template: src=templates/iptables.j2 dest=/etc/sysconfig/iptables owner=root group=root mode=600
+      notify: reload_iptables
+    - template: src=templates/kibana.conf.j2 dest=/etc/init/kibana.conf owner=root group=root mode=644
+    - shell: /sbin/initctl reload-configuration && /sbin/initctl start kibana && touch /root/done.upstart.kibana
+      args:
+        creates: /root/done.upstart.kibana
+  handlers:
+    - name: reload_td-agent
+      service: name=td-agent state=reloaded
+    - name: reload_iptables
+      service: name=iptables state=reloaded
+    - name: reload_kibana
+      shell: /sbin/initctl stop kibana ; /sbin/initctl start kibana
