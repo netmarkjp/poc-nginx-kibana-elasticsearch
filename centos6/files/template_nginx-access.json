@@ -1,0 +1,52 @@
+{
+  "template": "nginx.access-*",
+  "order":"1",
+  "mappings": {
+    "fluentd": {
+      "properties": {
+        "agent": {
+          "type": "string",
+          "fields": {
+            "agent": {"type": "string", "index": "analyzed"},
+            "raw": {"type": "string", "index": "not_analyzed"}
+          }
+        },
+        "forwader": {
+          "type": "string",
+          "fields": {
+            "forwader": {"type": "string", "index": "analyzed"},
+            "raw": {"type": "string", "index": "not_analyzed"}
+          }
+        },
+        "host": {
+          "type": "string",
+          "fields": {
+            "host": {"type": "string", "index": "analyzed"},
+            "raw": {"type": "string", "index": "not_analyzed"}
+          }
+        },
+        "path": {
+          "type": "string",
+          "fields": {
+            "path": {"type": "string", "index": "analyzed"},
+            "raw": {"type": "string", "index": "not_analyzed"}
+          }
+        },
+        "referer": {
+          "type": "string",
+          "fields": {
+            "referer": {"type": "string", "index": "analyzed"},
+            "raw": {"type": "string", "index": "not_analyzed"}
+          }
+        },
+        "remote": {
+          "type": "string",
+          "fields": {
+            "remote": {"type": "string", "index": "analyzed"},
+            "raw": {"type": "string", "index": "not_analyzed"}
+          }
+        }
+      }
+    }
+  }
+}

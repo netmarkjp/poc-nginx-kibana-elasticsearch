@@ -72,6 +72,10 @@
     - shell: /sbin/initctl reload-configuration && /sbin/initctl start kibana && touch /root/done.upstart.kibana
       args:
         creates: /root/done.upstart.kibana
+    - copy: src=files/template_nginx-access.json dest=/root/template_nginx-access.json
+    - shell: curl -XPUT http://localhost:9200/_template/nginx-access -d "`cat /root/template_nginx-access.json`" && touch /root/done.kibana.template_nginx-access
+      args:
+        creates: /root/done.kibana.template_nginx-access
   handlers:
     - name: reload_td-agent
       service: name=td-agent state=reloaded
